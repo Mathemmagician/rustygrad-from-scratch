@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate impl_ops;
+
 use std::{
     cell::RefCell,
     fmt::{self, Debug},
@@ -52,24 +55,23 @@ impl Debug for Value {
     }
 }
 
-impl ops::Add for Value {
-    type Output = Value;
+impl_op_ex!(+ |a: &Value, b: &Value| -> Value {
+    let out = Value::from(a.borrow().data + b.borrow().data);
+    out.borrow_mut()._prev = vec![a.clone(), b.clone()];
+    out.borrow_mut()._backward = Some(|value: &ValueData| {
+        value._prev[0].borrow_mut().grad += value.grad;
+        value._prev[1].borrow_mut().grad += value.grad;
+    });
+    out
+});
 
-    fn add(self, rhs: Self) -> Self::Output {
-        let out = Value::from(self.borrow().data + rhs.borrow().data);
-        out.borrow_mut()._prev = vec![self.clone(), rhs.clone()];
-        out.borrow_mut()._backward = Some(|value: &ValueData| {
-            value._prev[0].borrow_mut().grad += value.grad;
-            value._prev[1].borrow_mut().grad += value.grad;
-        });
-        out
-    }
-}
 
 fn main() {
     let a = Value::from(1.0);
     let b = Value::from(-4.0);
-    let c = a + b;
+    let c = &a + &b;
+    let d = a + b;
 
     println!("{:?}", c);  // data=-3 grad=0
+    println!("{:?}", d);  // data=-3 grad=0
 }
