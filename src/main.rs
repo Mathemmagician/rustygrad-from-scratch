@@ -1,5 +1,7 @@
 use std::{
     cell::RefCell,
+    fmt::{self, Debug},
+    ops,
     rc::Rc,
 };
 
@@ -36,10 +38,24 @@ impl<T: Into<f64>> From<T> for Value {
     }
 }
 
+impl ops::Deref for Value {
+    type Target = Rc<RefCell<ValueData>>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Debug for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let v = &self.borrow();
+        write!(f, "data={} grad={}", v.data, v.grad)
+    }
+}
+
 fn main() {
     let a = Value::from(-4.0);
-    println!("data = {}", a.0.borrow().data);  // data = -4
+    println!("{:?}", a); // data=-4 grad=0
 
-    a.0.borrow_mut().data = 7.5;
-    println!("data = {}", a.0.borrow().data);  // data = 7.5
+    a.borrow_mut().data = 7.5;
+    println!("{:?}", a); // data=7.5 grad=0
 }
