@@ -52,10 +52,24 @@ impl Debug for Value {
     }
 }
 
-fn main() {
-    let a = Value::from(-4.0);
-    println!("{:?}", a); // data=-4 grad=0
+impl ops::Add for Value {
+    type Output = Value;
 
-    a.borrow_mut().data = 7.5;
-    println!("{:?}", a); // data=7.5 grad=0
+    fn add(self, rhs: Self) -> Self::Output {
+        let out = Value::from(self.borrow().data + rhs.borrow().data);
+        out.borrow_mut()._prev = vec![self.clone(), rhs.clone()];
+        out.borrow_mut()._backward = Some(|value: &ValueData| {
+            value._prev[0].borrow_mut().grad += value.grad;
+            value._prev[1].borrow_mut().grad += value.grad;
+        });
+        out
+    }
+}
+
+fn main() {
+    let a = Value::from(1.0);
+    let b = Value::from(-4.0);
+    let c = a + b;
+
+    println!("{:?}", c);  // data=-3 grad=0
 }
