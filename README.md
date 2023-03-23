@@ -17,4 +17,6 @@ The tutorial is short. There will be things you don't understand. Use it as an o
 
 If your setup looks like this, you are doing it right:
 
-[right.png](right.png)
+![right.png](right.png)
+
+Good Luck!
