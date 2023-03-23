@@ -9,7 +9,7 @@
 
 # How does this work?
 
-Open your [favorite editor](https://code.visualstudio.com/download) and [The Tutorial](https://github.com/Mathemmagician/rustygrad/blob/dev/TUTORIAL.md).
+Open your [favorite editor](https://code.visualstudio.com/download) and [The Tutorial](TUTORIAL.md).
 
 As you go through the tutorial, the accompaning code changes can be found in this repo's commits (There are only 10 of them)
 
