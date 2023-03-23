@@ -51,6 +51,17 @@ impl_op_ex!(*|a: &Value, b: &Value| -> Value {
     out
 });
 
+impl_op_ex_commutative!(+ |a: &Value, b: f64| -> Value { a + Value::from(b) });
+impl_op_ex_commutative!(* |a: &Value, b: f64| -> Value { a * Value::from(b) });
+
+impl_op_ex!(- |a: &Value| -> Value { a * (-1.0) });
+impl_op_ex!(- |a: &Value, b: &Value| -> Value { a + (-b) });
+impl_op_ex!(/ |a: &Value, b: &Value| -> Value { a * b.pow(-1.0) });
+impl_op_ex!(+= |a: &mut Value, b: &Value| { *a = &*a + b });
+impl_op_ex!(*= |a: &mut Value, b: &Value| { *a = &*a * b });
+impl_op_ex!(/ |a: &Value, b: f64| -> Value { a / Value::from(b) });
+impl_op_ex!(/ |a: f64, b: &Value| -> Value { Value::from(a) / b });
+
 impl Value {
     fn new(value: ValueData) -> Value {
         Value(Rc::new(RefCell::new(value)))
@@ -99,11 +110,21 @@ impl Debug for Value {
 
 
 fn main() {
-    let a = Value::from(1.0);
-    let b = Value::from(-4.0);
-    let c = &a + &b;
-    let d = &a * &b;
+    let a = Value::from(-4.0);
+    let b = Value::from(2.0);
 
-    println!("{:?}", c);  // data=-3 grad=0
-    println!("{:?}", d);  // data=-4 grad=0
+    let mut c = &a + &b;
+    let mut d = &a * &b + &b.pow(3.0);
+
+    c += &c + 1.0;
+    c += 1.0 + &c + (-&a);
+    d += &d * 2.0 + (&b + &a).relu();
+    d += 3.0 * &d + (&b - &a).relu();
+
+    let e = &c - &d;
+    let f = e.pow(2.0);
+    let mut g = &f / 2.0;
+    g += 10.0 / &f;
+
+    println!("{:.4}", g.borrow().data); // 24.7041
 }
