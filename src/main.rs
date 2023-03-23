@@ -3,10 +3,13 @@ extern crate impl_ops;
 
 use std::{
     cell::RefCell,
+    collections::HashSet,
     fmt::{self, Debug},
+    hash::{Hash, Hasher},
     ops,
     rc::Rc,
 };
+use uuid::Uuid;
 
 #[derive(Clone)]
 struct Value(Rc<RefCell<ValueData>>);
@@ -14,6 +17,7 @@ struct Value(Rc<RefCell<ValueData>>);
 struct ValueData {
     data: f64,
     grad: f64,
+    uuid: Uuid,
     _prev: Vec<Value>,
     _backward: Option<fn(value: &ValueData)>,
 }
@@ -23,6 +27,7 @@ impl ValueData {
         ValueData {
             data,
             grad: 0.0,
+            uuid: Uuid::new_v4(),
             _prev: Vec::new(),
             _backward: None,
         }
@@ -86,6 +91,29 @@ impl Value {
         });
         out
     }
+
+    fn backward(&self) {
+        let mut topo: Vec<Value> = vec![];
+        let mut visited: HashSet<Value> = HashSet::new();
+        self._build_topo(&mut topo, &mut visited);
+        topo.reverse();
+
+        self.borrow_mut().grad = 1.0;
+        for v in topo {
+            if let Some(backprop) = v.borrow()._backward {
+                backprop(&v.borrow());
+            }
+        }
+    }
+
+    fn _build_topo(&self, topo: &mut Vec<Value>, visited: &mut HashSet<Value>) {
+        if visited.insert(self.clone()) {
+            self.borrow()._prev.iter().for_each(|child| {
+                child._build_topo(topo, visited);
+            });
+            topo.push(self.clone());
+        }
+    }
 }
 
 impl<T: Into<f64>> From<T> for Value {
@@ -108,6 +136,19 @@ impl Debug for Value {
     }
 }
 
+impl Hash for Value {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.borrow().uuid.hash(state);
+    }
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        self.borrow().uuid == other.borrow().uuid
+    }
+}
+
+impl Eq for Value {}
 
 fn main() {
     let a = Value::from(-4.0);
@@ -127,4 +168,8 @@ fn main() {
     g += 10.0 / &f;
 
     println!("{:.4}", g.borrow().data); // 24.7041
+
+    g.backward();
+    println!("{:.4}", a.borrow().grad); // 138.8338
+    println!("{:.4}", b.borrow().grad); // 645.5773
 }
