@@ -29,9 +29,51 @@ impl ValueData {
     }
 }
 
+impl_op_ex!(+ |a: &Value, b: &Value| -> Value {
+    let out = Value::from(a.borrow().data + b.borrow().data);
+    out.borrow_mut()._prev = vec![a.clone(), b.clone()];
+    out.borrow_mut()._backward = Some(|value: &ValueData| {
+        value._prev[0].borrow_mut().grad += value.grad;
+        value._prev[1].borrow_mut().grad += value.grad;
+    });
+    out
+});
+
+impl_op_ex!(*|a: &Value, b: &Value| -> Value {
+    let out = Value::from(a.borrow().data * b.borrow().data);
+    out.borrow_mut()._prev = vec![a.clone(), b.clone()];
+    out.borrow_mut()._backward = Some(|value: &ValueData| {
+        let a_data = value._prev[0].borrow().data;
+        let b_data = value._prev[1].borrow().data;
+        value._prev[0].borrow_mut().grad += b_data * value.grad;
+        value._prev[1].borrow_mut().grad += a_data * value.grad;
+    });
+    out
+});
+
 impl Value {
     fn new(value: ValueData) -> Value {
         Value(Rc::new(RefCell::new(value)))
+    }
+
+    fn relu(&self) -> Value {
+        let out = Value::from(self.borrow().data.max(0.0));
+        out.borrow_mut()._prev = vec![self.clone()];
+        out.borrow_mut()._backward = Some(|value: &ValueData| {
+            value._prev[0].borrow_mut().grad += if value.data > 0.0 { value.grad } else { 0.0 };
+        });
+        out
+    }
+
+    fn pow(&self, power: f64) -> Value {
+        let out = Value::from(self.borrow().data.powf(power));
+        out.borrow_mut()._prev = vec![self.clone(), Value::from(power)];
+        out.borrow_mut()._backward = Some(|value: &ValueData| {
+            let base = value._prev[0].borrow().data;
+            let p = value._prev[1].borrow().data;
+            value._prev[0].borrow_mut().grad += p * base.powf(p - 1.0) * value.grad;
+        });
+        out
     }
 }
 
@@ -55,23 +97,13 @@ impl Debug for Value {
     }
 }
 
-impl_op_ex!(+ |a: &Value, b: &Value| -> Value {
-    let out = Value::from(a.borrow().data + b.borrow().data);
-    out.borrow_mut()._prev = vec![a.clone(), b.clone()];
-    out.borrow_mut()._backward = Some(|value: &ValueData| {
-        value._prev[0].borrow_mut().grad += value.grad;
-        value._prev[1].borrow_mut().grad += value.grad;
-    });
-    out
-});
-
 
 fn main() {
     let a = Value::from(1.0);
     let b = Value::from(-4.0);
     let c = &a + &b;
-    let d = a + b;
+    let d = &a * &b;
 
     println!("{:?}", c);  // data=-3 grad=0
-    println!("{:?}", d);  // data=-3 grad=0
+    println!("{:?}", d);  // data=-4 grad=0
 }
